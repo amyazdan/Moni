@@ -2,14 +2,15 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    kotlin("kapt") // سینتکس استاندارد برای اعمال پلاگین
 }
 
 android {
-    namespace = "com.example.moni"
+    namespace = "com.app.moni" // اصلاح namespace
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.moni"
+        applicationId = "com.app.moni"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -56,4 +57,13 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    val room_version = "2.6.1"
+    val gson_version = "2.10.1"
+
+    implementation("androidx.room:room-runtime:$room_version")
+    kapt("androidx.room:room-compiler:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+
+    implementation("com.google.code.gson:gson:$gson_version")
 }
