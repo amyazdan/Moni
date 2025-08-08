@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,14 +20,22 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.app.moni.data.db.AppDatabase
 import com.app.moni.data.model.BankEntity
+import com.app.moni.data.model.TransactionEntity
+import com.app.moni.ui.budget.AddEditBudgetScreen
 import com.app.moni.ui.budget.BudgetScreen
+import com.app.moni.ui.budget.BudgetViewModel
+import com.app.moni.ui.category.CategoryScreen
+import com.app.moni.ui.category.CategoryViewModel
 import com.app.moni.ui.components.BottomNavBar
 import com.app.moni.ui.dashboard.DashboardScreen
 import com.app.moni.ui.dashboard.DashboardViewModel
 import com.app.moni.ui.settings.AddEditBankScreen
 import com.app.moni.ui.settings.SettingsScreen
 import com.app.moni.ui.settings.SettingsViewModel
+import com.app.moni.ui.transactions.TransactionDetailsScreen
 import com.app.moni.ui.transactions.TransactionsScreen
+import com.app.moni.ui.transactions.TransactionsViewModel
+import com.app.moni.ui.uncategorized.UncategorizedScreen
 import com.app.moni.ui.theme.MoniTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +46,9 @@ class MainActivity : ComponentActivity() {
     private val SMS_PERMISSION_CODE = 100
     private lateinit var settingsViewModel: SettingsViewModel
     private lateinit var dashboardViewModel: DashboardViewModel
+    private lateinit var transactionsViewModel: TransactionsViewModel
+    private lateinit var budgetViewModel: BudgetViewModel
+    private lateinit var categoryViewModel: CategoryViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,15 +57,25 @@ class MainActivity : ComponentActivity() {
         val db = AppDatabase.getDatabase(this)
         settingsViewModel = SettingsViewModel(db.bankDao())
         dashboardViewModel = DashboardViewModel(db.transactionDao())
+        transactionsViewModel = TransactionsViewModel(db.transactionDao())
+        budgetViewModel = BudgetViewModel(db.transactionDao(), db.budgetDao())
+        categoryViewModel = CategoryViewModel(db.transactionDao())
 
         setContent {
             MoniTheme {
                 var currentScreen by remember { mutableStateOf("dashboard") }
+                var selectedTransaction: TransactionEntity? by remember { mutableStateOf(null) }
+                var uncategorizedTransactionId: Long? by remember { mutableStateOf(null) }
+
                 Scaffold(
                     bottomBar = {
                         BottomNavBar(
                             selectedScreen = currentScreen,
-                            onScreenSelected = { currentScreen = it }
+                            onScreenSelected = {
+                                currentScreen = it
+                                selectedTransaction = null
+                                uncategorizedTransactionId = null
+                            }
                         )
                     }
                 ) { innerPadding ->
@@ -62,10 +84,27 @@ class MainActivity : ComponentActivity() {
                             DashboardScreen(viewModel = dashboardViewModel)
                         }
                         "transactions" -> {
-                            TransactionsScreen()
+                            TransactionsScreen(
+                                viewModel = transactionsViewModel,
+                                onTransactionClick = { transaction ->
+                                    selectedTransaction = transaction
+                                    currentScreen = "transaction_details"
+                                },
+                                onShowUncategorizedClick = { currentScreen = "uncategorized_screen" }
+                            )
                         }
+                        "uncategorized_screen" -> UncategorizedScreen(
+                            viewModel = transactionsViewModel,
+                            onCategorizeClick = { id ->
+                                uncategorizedTransactionId = id
+                                currentScreen = "category_screen"
+                            }
+                        )
                         "budget" -> {
-                            BudgetScreen()
+                            BudgetScreen(
+                                viewModel = budgetViewModel,
+                                onAddBudgetClick = { currentScreen = "add_edit_budget" }
+                            )
                         }
                         "settings" -> SettingsScreen(
                             viewModel = settingsViewModel,
@@ -75,6 +114,30 @@ class MainActivity : ComponentActivity() {
                             viewModel = settingsViewModel,
                             onSave = { currentScreen = "settings" }
                         )
+                        "add_edit_budget" -> AddEditBudgetScreen(
+                            viewModel = budgetViewModel,
+                            onSave = { currentScreen = "budget" }
+                        )
+                        "transaction_details" -> {
+                            selectedTransaction?.let { transaction ->
+                                TransactionDetailsScreen(
+                                    transaction = transaction,
+                                    onBackClick = { currentScreen = "transactions" }
+                                )
+                            } ?: Text("Transaction not found")
+                        }
+                        "category_screen" -> {
+                            uncategorizedTransactionId?.let { transactionId ->
+                                CategoryScreen(
+                                    viewModel = categoryViewModel,
+                                    transactionId = transactionId,
+                                    onFinish = {
+                                        currentScreen = "uncategorized_screen"
+                                        uncategorizedTransactionId = null
+                                    }
+                                )
+                            } ?: Text("Transaction not found for categorization")
+                        }
                     }
                 }
             }
@@ -97,6 +160,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == SMS_PERMISSION_CODE) {

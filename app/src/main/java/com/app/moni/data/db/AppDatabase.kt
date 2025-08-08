@@ -7,16 +7,19 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.app.moni.data.converter.StringListConverter
 import com.app.moni.data.dao.BankDao
+import com.app.moni.data.dao.BudgetDao
 import com.app.moni.data.dao.TransactionDao
 import com.app.moni.data.model.BankEntity
+import com.app.moni.data.model.BudgetEntity
 import com.app.moni.data.model.TransactionEntity
 
-@Database(entities = [TransactionEntity::class, BankEntity::class], version = 1, exportSchema = false)
-@TypeConverters(StringListConverter::class) // افزودن TypeConverter
+@Database(entities = [TransactionEntity::class, BankEntity::class, BudgetEntity::class], version = 1, exportSchema = false)
+@TypeConverters(StringListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
     abstract fun bankDao(): BankDao
+    abstract fun budgetDao(): BudgetDao
 
     companion object {
         @Volatile
@@ -28,7 +31,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "moni_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration() // افزودن این خط برای مدیریت تغییرات شمای پایگاه داده
+                    .build()
                 INSTANCE = instance
                 instance
             }

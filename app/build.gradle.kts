@@ -2,11 +2,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt") // سینتکس استاندارد برای اعمال پلاگین
+    id("kotlin-kapt")
 }
 
 android {
-    namespace = "com.app.moni" // اصلاح namespace
+    namespace = "com.app.moni"
     compileSdk = 36
 
     defaultConfig {
@@ -66,4 +66,6 @@ dependencies {
     implementation("androidx.room:room-ktx:$room_version")
 
     implementation("com.google.code.gson:gson:$gson_version")
+
+    // وابستگی‌های WorkManager حذف شد
 }
